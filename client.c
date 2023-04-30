@@ -9,6 +9,7 @@
 
 int main()
 {
+	char user[1024];
 	//socket
 	int server_sd = socket(AF_INET,SOCK_STREAM,0);
 	if(server_sd<0)
@@ -91,6 +92,16 @@ int main()
 			recv(accept_val, filePP, 256, 0);
 			printf("RECEIVED 2: %s\n", filePP);
 			close(sockfd);
+		}else if(strncmp(buffer, "USER", 4)==0){
+			printf("here");
+			send(server_sd, buffer,strlen(buffer),0);
+			recv(server_sd, retBuffer, 256, 0);
+			printf("%s\n", retBuffer);	
+		}else if(strncmp(buffer, "PASS", 4)==0){
+			printf("here");
+			send(server_sd, buffer,strlen(buffer),0);
+			recv(server_sd, retBuffer, 256, 0);	
+			printf("%s\n", retBuffer);
 		}else{
 			printf("COUDL NOT FIND\n");
 			int err = send(server_sd,buffer,strlen(buffer),0);
