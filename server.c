@@ -163,6 +163,17 @@ int main()
 							send(fd, found, strlen(found), 0); // send 150 file status okay
 							//send file over data connection
 							send(sockfd_two, "2.txtEEE", strlen("2.txtEEE"), 0);
+							send(sockfd_two, "226 Transfer completed.", strlen("226 Transfer completed."), 0);
+							close(sockfd_two);
+						}else if(strncmp(buffer, "STOR",4)==0){
+							printf("received: %s, fd:%d, sockval:%d \n",buffer, fd, sockfd_two);
+							char* found = "150 File status okay; about to open data connection.";
+							send(fd, found, strlen(found), 0); // send 150 file status okay
+							//receive file over data connection
+							char fileBuffer[256];
+							recv(sockfd_two, fileBuffer, 256, 0);
+							printf("FILEBUFFER: %s\n", fileBuffer);
+							send(sockfd_two, "226 Transfer completed.", strlen("226 Transfer completed."), 0);
 							close(sockfd_two);
 						}else{
 							printf("INVALID COMMAND: %s\n", buffer);
