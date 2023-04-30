@@ -158,12 +158,25 @@ int main()
 							
 						}else if(strncmp(buffer, "RETR",4)==0){
 							printf("received: %s, fd:%d, sockval:%d \n",buffer, fd, sockfd_two);
+							char filepath[1024];
+							sscanf(buffer, "RETR %s", filepath);
+							FILE* fileobj = fopen(filepath, "r");
+							if(!fileobj){
+								char* notFound = "404 where da file?";
+								send(fd, notFound, strlen(notFound), 0); // send 404 not found
+							}else{
+								char* found = "150 File status okay; about to open data connection.";
+								send(fd, found, strlen(found), 0); // send 150 file status okay
+								//send file over data connection
 
-							char* found = "150 File status okay; about to open data connection.";
-							send(fd, found, strlen(found), 0); // send 150 file status okay
-							//send file over data connection
-							send(sockfd_two, "2.txtEEE", strlen("2.txtEEE"), 0);
-							send(sockfd_two, "226 Transfer completed.", strlen("226 Transfer completed."), 0);
+								char send_buffer[256];
+								while(fgets(send_buffer,256,fileobj)!=NULL){
+									send(sockfd_two, send_buffer, strlen(send_buffer), 0);
+								}
+
+								send(fd, "226 Transfer completed.", strlen("226 Transfer completed."), 0);
+							}
+							fclose(fileobj);
 							close(sockfd_two);
 						}else if(strncmp(buffer, "STOR",4)==0){
 							printf("received: %s, fd:%d, sockval:%d \n",buffer, fd, sockfd_two);
@@ -171,9 +184,13 @@ int main()
 							send(fd, found, strlen(found), 0); // send 150 file status okay
 							//receive file over data connection
 							char fileBuffer[256];
-							recv(sockfd_two, fileBuffer, 256, 0);
-							printf("FILEBUFFER: %s\n", fileBuffer);
-							send(sockfd_two, "226 Transfer completed.", strlen("226 Transfer completed."), 0);
+							FILE* temp = fopen("testSTOR.txt", "w");
+							while(recv(sockfd_two, fileBuffer, 256, 0) > 0){
+								// printf("FB:%s \n", fileBuffer);
+								fwrite(fileBuffer, 1, strlen(fileBuffer), temp);
+							}
+							fclose(temp);
+							send(fd, "226 Transfer completed.", strlen("226 Transfer completed."), 0);
 							close(sockfd_two);
 						}else{
 							printf("INVALID COMMAND: %s\n", buffer);

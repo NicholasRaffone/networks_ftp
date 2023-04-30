@@ -93,42 +93,59 @@ int main(int argc, char** argv)
 			printf("RECEIVED: %s\n", retBuffer); // receive 200 port success
 			
 			send(server_sd, buffer, 256, 0); // send retr filename
-			
+
 			recv(server_sd, retBuffer, 256, 0);
-			printf("RECEIVED: %s\n", retBuffer); // receive 150 file success
+			printf("RECEIVED: %s\n", retBuffer); // receive 150 file success or 404
 
-			char filePP[256];
-			// receive file
-			recv(accept_val, filePP, 256, 0);
-			printf("RECEIVED 2: %s\n", filePP); // receive file data
+			if(strncmp("150", retBuffer, 3) == 0){
+				// file is found
+				printf("file found\n");
+				char filePP[256];
+				// receive file
+				FILE* temp = fopen("test.txt", "w");
+				while(recv(accept_val, filePP, 256, 0) > 0){
+					fwrite(filePP, 1, strlen(filePP), temp);
+				}
+				fclose(temp);
 
-			recv(accept_val, filePP, 256, 0);
-			printf("RECEIVED 2: %s\n", filePP); // 226 file transfer completed
-
-			close(sockfd);
+				recv(server_sd, retBuffer, 256, 0);
+				printf("RECEIVED 2: %s\n", retBuffer); // 226 file transfer completed
+			}
 			port_offset++;
-		}else if(strncmp(buffer, "STOR", 4) == 0){
-			char portMsg[40];
-			int sockfd = connectSocket(portMsg, CLIENT_CONTROL_PORT+port_offset);
-			
-			send(server_sd, portMsg,strlen(portMsg),0); // send port x:y
-			int accept_val = accept(sockfd, 0,0);
-
-			recv(server_sd, retBuffer, 256, 0);
-			printf("RECEIVED: %s\n", retBuffer); // receive 200 port success
-			
-			send(server_sd, buffer, 256, 0); // send retr filename (check if this is necessary)
-			
-			recv(server_sd, retBuffer, 256, 0);
-			printf("RECEIVED: %s\n", retBuffer); // receive 150 file success
-
-			send(accept_val, "HELLO", strlen("HELLO"), 0); // send data on data connection
-
-			char filePP[256];
-			recv(accept_val, filePP, 256, 0);
-			printf("RECEIVED 2: %s\n", filePP); // 226 file transfer completed
-
 			close(sockfd);
+		}else if(strncmp(buffer, "STOR", 4) == 0){
+			char filepath[1024];
+			sscanf(buffer, "STOR %s", filepath);
+			FILE* fileobj = fopen(filepath, "r");
+			if(!fileobj){
+				printf("File not found\n");
+			}else{
+				char portMsg[40];
+				int sockfd = connectSocket(portMsg, CLIENT_CONTROL_PORT+port_offset);
+				
+				send(server_sd, portMsg,strlen(portMsg),0); // send port x:y
+				int accept_val = accept(sockfd, 0,0);
+
+				recv(server_sd, retBuffer, 256, 0);
+				printf("RECEIVED: %s\n", retBuffer); // receive 200 port success
+
+				send(server_sd, buffer, 256, 0); // send STOR filename
+
+				recv(server_sd, retBuffer, 256, 0);
+				printf("RECEIVED: %s\n", retBuffer); // receive 150 file success
+
+				//send file over data connection
+				char send_buffer[256];
+				while(fgets(send_buffer,256,fileobj)!=NULL){
+					send(accept_val, send_buffer, strlen(send_buffer), 0);
+				}
+				printf("done sending\n");
+				close(sockfd); // not closing properly atm 
+				fclose(fileobj);
+
+				recv(server_sd, retBuffer, 256, 0);
+				printf("RECEIVED 2: %s\n", retBuffer); // 226 file transfer completed
+			}
 			port_offset++;
 		}else{
 			printf("INVALID COMMAND\n");
