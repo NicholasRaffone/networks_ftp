@@ -13,7 +13,7 @@
 #include<stdlib.h>
 #include<errno.h>
 #define CONTROL_PORT 5000
-#define DATA_PORT 5001
+#define SERVER_DATA_PORT 5001
 
 int main()
 {
@@ -58,6 +58,11 @@ int main()
 
 	printf("Server is listening...\n");
 	int sockfd_two;
+	struct sockaddr_in serverDataAddr;
+	bzero(&serverDataAddr,sizeof(serverDataAddr));
+	serverDataAddr.sin_family = AF_INET;
+	serverDataAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	serverDataAddr.sin_port = htons(SERVER_DATA_PORT);
 	while(1)
 	{
 		printf("max fd = %d \n",max_fd);
@@ -104,7 +109,6 @@ int main()
 					}else{
 
 						// check here for commands: PORT, RETR, ETC.
-
 						/*
 							RETR FLOW:
 							1. SERVER GETS `PORT XYZ` ON CONTROL CONNECTION:
@@ -122,13 +126,22 @@ int main()
 							char* ret = "200 PORT command successful";
 
 							sockfd_two = socket(AF_INET, SOCK_STREAM, 0);
+							printf("socket at: %d\n", sockfd_two);
+							if(sockfd_two < 0){
+								printf("socket err, errno: %d, sock:%d\n", errno, sockfd_two);
+							}
 							int value  = 1;
 							setsockopt(sockfd_two,SOL_SOCKET,SO_REUSEADDR,&value,sizeof(value));
 							struct sockaddr_in remoteaddr;
 							bzero(&remoteaddr,sizeof(remoteaddr));
 							remoteaddr.sin_family = AF_INET;
 							remoteaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-							remoteaddr.sin_port = htons(6093);
+							remoteaddr.sin_port = htons(6093); // get from port command above (client port to send data to)
+
+							int bindErr = bind(sockfd_two, (struct sockaddr *)&serverDataAddr, sizeof(serverDataAddr));
+							if(bindErr!=0){
+								printf("bind err, %d\n", errno);
+							}
 							int err = connect(sockfd_two, (struct sockaddr *)&remoteaddr, sizeof(remoteaddr));
 							if(err!=0){
 								printf("connect err, %d\n", errno);

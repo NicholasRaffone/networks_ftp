@@ -56,12 +56,15 @@ int main()
 			int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 			int value  = 1;
 			setsockopt(sockfd,SOL_SOCKET,SO_REUSEADDR,&value,sizeof(value));
-			struct sockaddr_in localaddr;
-			bzero(&localaddr,sizeof(localaddr));
-			localaddr.sin_family = AF_INET;
-			localaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-			localaddr.sin_port = htons(6093);
-			int bind_err = bind(sockfd, (struct sockaddr *)&localaddr, sizeof(localaddr));
+			struct sockaddr_in clientDataAddr;
+			bzero(&clientDataAddr,sizeof(clientDataAddr));
+			clientDataAddr.sin_family = AF_INET;
+			clientDataAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+			clientDataAddr.sin_port = htons(6093); // N+1 (data to send from)
+
+			// for uploading data, establish port command in same way, but bind to local, send data to remote
+
+			int bind_err = bind(sockfd, (struct sockaddr *)&clientDataAddr, sizeof(clientDataAddr));
 			if(bind_err < 0){
 				printf("bind err, errno:%d\n", errno);
 				exit(1);
