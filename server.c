@@ -19,12 +19,13 @@
 typedef struct user_state
 {
 	char *user;
+	int client_num;
 	int log ;  //check if user is looged in or not 
 	int pass ; //check if the oassword is right?
 	struct user_state *next; 
 }USR; 
-
-void addNode( USR *head, char buff[])
+USR* head= NULL;  //the lsit tp maintain state 
+void addNode(  char buff[], int n)
 {
 	int f =0; 
 	char* us;
@@ -45,23 +46,37 @@ void addNode( USR *head, char buff[])
 	// free(us);
 	node->user = us;
 	node->log = 1 ; 
+	node->client_num = n;
 	node-> pass = 0;
 	node->next = head;
 	head = node; 
 	}
 }
 
-int password_verified(USR *head, char buff[])
+void print_list()
+{	
+	USR* curr = head; 
+	while(curr!=NULL)
+	{
+		printf("%d\tname:%s\n", curr->client_num, curr->user);
+		curr= curr->next;
+	}
+}
+
+int password_verified( char buff[])
 {
 	int f =0; 
 	char* us;
     us = malloc(strlen(buff)*sizeof(char)+1);
     strcpy(us, buff);
 	USR* curr = head; 
+	printf("%s:us\n", us);
 	while(curr!=NULL)
-	{
+	{	
+		// printf("%slisttt\n", curr->user);
 		if(strcmp(curr->user,us)==0){
 			curr->pass=1; 
+			// printf("here password found\n");
 			f=1;
 			break; 
 	}
@@ -69,15 +84,22 @@ int password_verified(USR *head, char buff[])
 	}
 	return f;
 }
-void removeNode(USR *head, char buff[])
+void removeNode( int n)
 {
 	USR* curr= head;
-	USR* prev = head; 
+	USR* prev = NULL; 
 	while(curr!=NULL)
 	{
-		if(strcmp(curr->user, buff)==0)
+		if(curr->client_num ==n)
 		{
+			if(prev==NULL)
+			{
+				head= curr->next;
+			}
+			else{
 			prev->next= curr->next;
+			}
+			free(curr);
 		break; }
 
 		prev= curr; 
@@ -120,12 +142,12 @@ int main()
 	}
 
 	//opening user file 
-	FILE * file ;						
-	file  = fopen("user.txt", "r");
-	if(file == NULL){
-		return 1;
-	}
-	USR* head= NULL;  //the lsit tp maintain state 
+	// FILE * file ;						
+	// file  = fopen("user.txt", "r");
+	// if(file == NULL){
+	// 	return 1;
+	// }
+	
 	
 	fd_set full_fdset;
 	fd_set read_fdset;
@@ -134,7 +156,7 @@ int main()
 	int max_fd = server_sd;
 
 	FD_SET(server_sd,&full_fdset);
-
+	FILE * file ;				
 	printf("Server is listening...\n");
 	int sockfd_two;
 	struct sockaddr_in serverDataAddr;
@@ -144,8 +166,8 @@ int main()
 	serverDataAddr.sin_port = htons(SERVER_DATA_PORT);
 	while(1)
 	{
-		FILE * file ;						
-		file  = fopen("user.txt", "r");
+				
+		
 		if(file == NULL){
 				return 1;
 			}
@@ -179,6 +201,9 @@ int main()
 					if(bytes==0)   //client has closed the connection
 					{
 						printf("connection closed from client side \n");
+						// print_list();
+						removeNode(fd);
+						// print_list();
 						close(fd);
 						FD_CLR(fd,&full_fdset);
 						if(fd==max_fd)
@@ -243,7 +268,7 @@ int main()
 							send(sockfd_two, "2.txtEEE", strlen("2.txtEEE"), 0);
 							close(sockfd_two);
 						}else if(strncmp(buffer, "USER",4)==0){
-							
+							file  = fopen("user.txt", "r");
 							printf("%s", buffer);
 							char temp[100]; 
 							strncpy(temp, buffer+5, strlen(buffer) -5); 
@@ -251,28 +276,37 @@ int main()
 							char *ret; 
 							char data[100];
 							char * t =",";
+							int f= 0;
 							while(fgets(data, 200, file)){
         						printf("%s\n", data);
 								char* token1 = strtok(data, t);
 								printf("%s\n", data);
 
 								if(strcmp(token1, temp)==0){
-										addNode(head, temp); 
+										addNode( temp, fd); 
 										printf("found\n");
+										f=1;
 										ret ="331 Username OK, need password.";
 										// send(fd, ret, strlen(ret), 0);
 										break;
+							}}
+							if(f==0)
+							{
+								ret ="user not logged in \n";
 							}
-							else{
-								ret ="no such user ";
-							}
-							if(send(fd, ret, strlen(ret), 0)==-1)
+							if(send(fd, ret, strlen(ret), 0)<0)
 							{
 								printf("send eroor\n");
 							}
-							}
+							
+							fclose(file);
 
 						}else if(strncmp(buffer, "PASS",4)==0){
+							file  = fopen("user.txt", "r");
+							if(file == NULL)
+							{
+								printf("fdsfds\n");
+							}
 							char temp[100]; 
 							strncpy(temp, buffer+5, strlen(buffer) -5); 
 							temp[strlen(buffer)- 5]= '\0';  //password
@@ -280,13 +314,16 @@ int main()
 							char data[100];
 							int f =0;
 							char * t =",";
-							printf("here\n");
-							while(fgets(data, 200, file)){
+							// printf("here\n");
+							while(fgets(data, 100, file)){
         						printf("%s",data);
 								char* token1 = strtok(data, t);
 								char* token2 = strtok(NULL, t);
+								token2[strlen(token2)-1]='\0';
+								printf("%s\t%s\t%s\n", token1, token2, temp);
 								if(strcmp(token2, temp)==0){
-										f = password_verified(head, temp); 
+										// printf("the password matches in the file \n");
+										f = password_verified( token1); 
 										ret ="User logged in, proceed.";
 										break;
 							}
@@ -297,6 +334,7 @@ int main()
 								printf("wrong password\n");
 							}
 							send(fd, ret, strlen(ret), 0);
+							fclose(file);
 
 						}
 
@@ -310,7 +348,7 @@ int main()
 				}
 			}
 		}
-
+		
 	}
 
 	//close
