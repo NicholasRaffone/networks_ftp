@@ -117,6 +117,7 @@ int main(int argc, char** argv)
 			char filepath[1024];
 			sscanf(buffer, "STOR %s", filepath);
 			FILE* fileobj = fopen(filepath, "r");
+			fseek(fileobj, 0, SEEK_SET);
 			if(!fileobj){
 				printf("File not found\n");
 			}else{
@@ -136,11 +137,14 @@ int main(int argc, char** argv)
 
 				//send file over data connection
 				char send_buffer[256];
+				memset(send_buffer,'\0',256);
 				while(fgets(send_buffer,256,fileobj)!=NULL){
-					send(accept_val, send_buffer, strlen(send_buffer), 0);
+					send(accept_val, send_buffer, 256, 0);
+					memset(send_buffer,'\0',256);
 				}
 				printf("done sending\n");
-				close(sockfd); // not closing properly atm 
+				close(accept_val);
+				close(sockfd);
 				fclose(fileobj);
 
 				recv(server_sd, retBuffer, 256, 0);

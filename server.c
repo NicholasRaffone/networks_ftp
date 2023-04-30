@@ -161,6 +161,7 @@ int main()
 							char filepath[1024];
 							sscanf(buffer, "RETR %s", filepath);
 							FILE* fileobj = fopen(filepath, "r");
+							fseek(fileobj, 0, SEEK_SET);
 							if(!fileobj){
 								char* notFound = "404 where da file?";
 								send(fd, notFound, strlen(notFound), 0); // send 404 not found
@@ -170,10 +171,11 @@ int main()
 								//send file over data connection
 
 								char send_buffer[256];
+								memset(send_buffer,'\0',256);
 								while(fgets(send_buffer,256,fileobj)!=NULL){
-									send(sockfd_two, send_buffer, strlen(send_buffer), 0);
+									send(sockfd_two, send_buffer, 256, 0);
+									memset(send_buffer,'\0',256);
 								}
-
 								send(fd, "226 Transfer completed.", strlen("226 Transfer completed."), 0);
 							}
 							fclose(fileobj);
@@ -186,7 +188,6 @@ int main()
 							char fileBuffer[256];
 							FILE* temp = fopen("testSTOR.txt", "w");
 							while(recv(sockfd_two, fileBuffer, 256, 0) > 0){
-								// printf("FB:%s \n", fileBuffer);
 								fwrite(fileBuffer, 1, strlen(fileBuffer), temp);
 							}
 							fclose(temp);
