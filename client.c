@@ -62,28 +62,34 @@ int main()
 			localaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
 			localaddr.sin_port = htons(6093);
 			int bind_err = bind(sockfd, (struct sockaddr *)&localaddr, sizeof(localaddr));
-			if(bind_err < 1){
+			if(bind_err != 0){
 				printf("bind err\n");
 				exit(1);
 			}
 			int listen_err = listen(sockfd,5);
-			if(listen_err<1){
+			if(listen_err!=0){
 				printf("listen err\n");
 				close(sockfd);
 				exit(1);
 			}
 			
-			send(server_sd,portMsg,strlen(portMsg),0); // send port x:y
+			send(server_sd, portMsg,strlen(portMsg),0); // send port x:y
+			int accept_val = accept(sockfd, 0,0);
+
 			recv(server_sd, retBuffer, 256, 0);
 			printf("RECEIVED: %s\n", retBuffer); // receive 200 port success
+			
 			send(server_sd, buffer, 256, 0); // send retr filename
+			
 			recv(server_sd, retBuffer, 256, 0);
 			printf("RECEIVED: %s\n", retBuffer); // receive 150 file success
+			char filePP[256];
 			// receive file
-			recv(sockfd, retBuffer, 256, 0);
-			printf("RECEIVED: %s\n", retBuffer);
+			recv(accept_val, filePP, 256, 0);
+			printf("RECEIVED 2: %s\n", filePP);
 
 		}else{
+			printf("COUDL NOT FIND\n");
 			int err = send(server_sd,buffer,strlen(buffer),0);
 			if(err<0)
 			{

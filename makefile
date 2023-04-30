@@ -3,7 +3,7 @@ clean:
 	rm -f server client
 
 server: server.c
-	gcc server.c -lwsock32 -lws2_32 -o server
+	gcc server.c -o server
 
 client: client.c
-	gcc client.c -lwsock32 -lws2_32 -o client
+	gcc client.c -o client

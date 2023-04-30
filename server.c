@@ -11,6 +11,7 @@
 #include<sys/select.h>
 #include<unistd.h>
 #include<stdlib.h>
+#include<errno.h>
 #define CONTROL_PORT 5000
 #define DATA_PORT 5001
 
@@ -56,6 +57,7 @@ int main()
 	FD_SET(server_sd,&full_fdset);
 
 	printf("Server is listening...\n");
+	int sockfd_two;
 	while(1)
 	{
 		printf("max fd = %d \n",max_fd);
@@ -115,34 +117,34 @@ int main()
 							6. SERVER CLOSES PORT AFTER SEND
 							7. CLIENT CLOSES PORT AFTER RECEIVE
 						*/
-						printf("received: %s, fd:%d \n",buffer, fd);
-
 						if(strncmp(buffer, "PORT", 4)==0){
 							printf("port command\n");
 							char* ret = "200 PORT command successful";
-							send(fd, ret, strlen(ret), 0); // send 200
 
-							recv(fd,buffer,sizeof(buffer),0); // receive filename
-							printf("received: %s, fd:%d \n",buffer, fd);
-
-							char* found = "150 File status okay; about to open data connection.";
-							int sockfd_two = socket(AF_INET, SOCK_STREAM, 0);
+							sockfd_two = socket(AF_INET, SOCK_STREAM, 0);
 							int value  = 1;
 							setsockopt(sockfd_two,SOL_SOCKET,SO_REUSEADDR,&value,sizeof(value));
 							struct sockaddr_in remoteaddr;
 							bzero(&remoteaddr,sizeof(remoteaddr));
 							remoteaddr.sin_family = AF_INET;
 							remoteaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-							remoteaddr.sin_port = htons(5001);
+							remoteaddr.sin_port = htons(6093);
 							int err = connect(sockfd_two, (struct sockaddr *)&remoteaddr, sizeof(remoteaddr));
-							if(err<1){
-								printf("connect err, %d\n", err);
+							if(err!=0){
+								printf("connect err, %d\n", errno);
 							}
-							send(fd, found, strlen(found), 0); // send 150 file status okay
+							send(fd, ret, strlen(ret), 0); // send 200
+							
+						}else if(strncmp(buffer, "RETR",4)==0){
+							printf("received: %s, fd:%d, sockval:%d \n",buffer, fd, sockfd_two);
 
+							char* found = "150 File status okay; about to open data connection.";
+							send(fd, found, strlen(found), 0); // send 150 file status okay
 							//send file over data connection
-							send(sockfd_two, "2.txt", 256, 0);
+							send(sockfd_two, "2.txtEEE", strlen("2.txtEEE"), 0);
+							close(sockfd_two);
 						}else{
+							printf("INVALID COMMAND: %s\n", buffer);
 							char* ret = "COMMAND NOT FOUND";
 							send(fd, ret, strlen(ret), 0);
 						}
