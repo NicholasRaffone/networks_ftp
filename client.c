@@ -6,9 +6,12 @@
 #include <errno.h>
 #include<unistd.h>
 #include<stdlib.h>
+#define SERVER_DATA_PORT 5001
+#define SERVER_CONTROL_PORT 5000
 
-int main()
+int main(int argc, char** argv)
 {
+	int CLIENT_CONTROL_PORT = atoi(argv[1]);
 	//socket
 	int server_sd = socket(AF_INET,SOCK_STREAM,0);
 	if(server_sd<0)
@@ -22,7 +25,7 @@ int main()
 	struct sockaddr_in server_addr;
 	bzero(&server_addr,sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
-	server_addr.sin_port = htons(5000);
+	server_addr.sin_port = htons(SERVER_CONTROL_PORT);
 	server_addr.sin_addr.s_addr = inet_addr("127.0.0.1"); //INADDR_ANY, INADDR_LOOP
 
 	//connect
@@ -51,8 +54,9 @@ int main()
 
 		if(strncmp(buffer, "RETR", 4) == 0){
 			// retr flow
-			char* portMsg = "PORT 127,0,0,1,19,137"; //19*256+137
-
+			// char* portMsg = "PORT 127,0,0,1,19,137"; //19*256+137
+			char portMsg[40];
+			sprintf(portMsg, "PORT 127,0,0,1,%d,%d", (int)CLIENT_CONTROL_PORT/256, CLIENT_CONTROL_PORT%256);
 			int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 			int value  = 1;
 			setsockopt(sockfd,SOL_SOCKET,SO_REUSEADDR,&value,sizeof(value));
@@ -60,7 +64,7 @@ int main()
 			bzero(&clientDataAddr,sizeof(clientDataAddr));
 			clientDataAddr.sin_family = AF_INET;
 			clientDataAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-			clientDataAddr.sin_port = htons(6093); // N+1 (data to send from)
+			clientDataAddr.sin_port = htons(CLIENT_CONTROL_PORT); // N+1 (data to send from)
 
 			// for uploading data, establish port command in same way, but bind to local, send data to remote
 

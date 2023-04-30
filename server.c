@@ -124,7 +124,15 @@ int main()
 						if(strncmp(buffer, "PORT", 4)==0){
 							printf("port command\n");
 							char* ret = "200 PORT command successful";
-
+							int act_port[2];
+							int act_ip[4];
+							char ip[40];
+							int port_dec;
+							sscanf(buffer, "PORT %d,%d,%d,%d,%d,%d",&act_ip[0],&act_ip[1],&act_ip[2],&act_ip[3],&act_port[0],&act_port[1]);
+							sprintf(ip, "%d.%d.%d.%d", act_ip[0], act_ip[1], act_ip[2],act_ip[3]);
+							int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+							port_dec=act_port[0]*256+act_port[1];
+							printf("ip: %s, port: %d\n", ip, port_dec);
 							sockfd_two = socket(AF_INET, SOCK_STREAM, 0);
 							printf("socket at: %d\n", sockfd_two);
 							if(sockfd_two < 0){
