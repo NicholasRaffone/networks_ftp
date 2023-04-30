@@ -294,7 +294,7 @@ int main()
 							if(f==0)
 							{
 								ret = "dumbass";
-								printf("wrong password");
+								printf("wrong password\n");
 							}
 							send(fd, ret, strlen(ret), 0);
 
