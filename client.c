@@ -3,7 +3,7 @@
 #include<sys/socket.h>
 #include<arpa/inet.h>
 #include<netinet/in.h>
-
+#include <errno.h>
 #include<unistd.h>
 #include<stdlib.h>
 
@@ -62,8 +62,8 @@ int main()
 			localaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
 			localaddr.sin_port = htons(6093);
 			int bind_err = bind(sockfd, (struct sockaddr *)&localaddr, sizeof(localaddr));
-			if(bind_err != 0){
-				printf("bind err\n");
+			if(bind_err < 0){
+				printf("bind err, errno:%d\n", errno);
 				exit(1);
 			}
 			int listen_err = listen(sockfd,5);
@@ -87,7 +87,7 @@ int main()
 			// receive file
 			recv(accept_val, filePP, 256, 0);
 			printf("RECEIVED 2: %s\n", filePP);
-
+			close(sockfd);
 		}else{
 			printf("COUDL NOT FIND\n");
 			int err = send(server_sd,buffer,strlen(buffer),0);
