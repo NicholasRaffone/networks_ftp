@@ -144,7 +144,7 @@ int main()
 							bzero(&remoteaddr,sizeof(remoteaddr));
 							remoteaddr.sin_family = AF_INET;
 							remoteaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-							remoteaddr.sin_port = htons(6093); // get from port command above (client port to send data to)
+							remoteaddr.sin_port = htons(port_dec); // get from port command above (client port to send data to)
 
 							int bindErr = bind(sockfd_two, (struct sockaddr *)&serverDataAddr, sizeof(serverDataAddr));
 							if(bindErr!=0){
