@@ -25,40 +25,63 @@ typedef struct user_state
 	struct user_state *next; 
 }USR; 
 USR* head= NULL;  //the lsit tp maintain state 
-void addNode(  char buff[], int n)
+void addNode(  int n)
 {
-	int f =0; 
+	// char* us;
+    // us = malloc(strlen(buff)*sizeof(char)+1);
+    // strcpy(us, buff);
+	USR* node = (USR*) malloc(sizeof(USR)); 
+	// free(us);
+	node->user = "";
+	node->log = 0 ; 
+	node->client_num = n;
+	node-> pass = 0;
+	node->next = head;
+	head = node; 
+}
+
+void user_log_in(char buff[], int n)
+{
 	char* us;
     us = malloc(strlen(buff)*sizeof(char)+1);
     strcpy(us, buff);
-	USR* curr = head; 
+	USR* curr = head;   
 	while(curr!=NULL)
-	{
-		if(strcmp(curr->user,us)==0){
-			f=1; 
+	{	//printf("%duser updated with name%d\n", curr->client_num, n);
+		if(curr->client_num==n){
+			curr->log=1;
+			curr->user= us;
+			//printf("%suser updated with name\n", curr->user);
 			break; 
 	}
 		curr = curr->next;
 	}
 
-	if(f==0){
-	USR* node = (USR*) malloc(sizeof(USR)); 
-	// free(us);
-	node->user = us;
-	node->log = 1 ; 
-	node->client_num = n;
-	node-> pass = 0;
-	node->next = head;
-	head = node; 
-	}
 }
 
+int check_log_in(int n)
+{
+	int f=0;
+	USR* curr = head; 
+	while(curr!=NULL)
+	{
+		if(curr->client_num==n){
+			if(curr->pass==1)
+			{
+				f=1;
+			}	
+			break; 
+	}
+		curr = curr->next;
+	}
+	return f;
+}
 void print_list()
 {	
 	USR* curr = head; 
 	while(curr!=NULL)
 	{
-		printf("%d\tname:%s\n", curr->client_num, curr->user);
+		//printf("%d\tname:%s\n", curr->client_num, curr->user);
 		curr= curr->next;
 	}
 }
@@ -73,10 +96,10 @@ int password_verified( char buff[])
 	printf("%s:us\n", us);
 	while(curr!=NULL)
 	{	
-		// printf("%slisttt\n", curr->user);
+		//printf("%slisttt\n", curr->user);
 		if(strcmp(curr->user,us)==0){
 			curr->pass=1; 
-			// printf("here password found\n");
+			//printf("here password found\n");
 			f=1;
 			break; 
 	}
@@ -189,7 +212,7 @@ int main()
 					int client_sd = accept(server_sd,0,0);
 					printf("Client Connected fd = %d \n",client_sd);
 					FD_SET(client_sd,&full_fdset);
-					
+					addNode(client_sd);
 					if(client_sd>max_fd)	
 						max_fd = client_sd;
 				}
@@ -233,6 +256,8 @@ int main()
 
 						
 						if(strncmp(buffer, "PORT", 4)==0){
+							int flag = check_log_in(fd);
+							if(flag==1){
 							printf("port command\n");
 							char* ret = "200 PORT command successful";
 
@@ -258,8 +283,14 @@ int main()
 								printf("connect err, %d\n", errno);
 							}
 							send(fd, ret, strlen(ret), 0); // send 200
-							
+							}else
+							{
+							char* ret = "200 PORT command blocked - user not logged in";
+							send(fd, ret, strlen(ret), 0); // send error message	
+							}
 						}else if(strncmp(buffer, "RETR",4)==0){
+							int flag= check_log_in(fd);
+							if(flag==1){
 							printf("received: %s, fd:%d, sockval:%d \n",buffer, fd, sockfd_two);
 
 							char* found = "150 File status okay; about to open data connection.";
@@ -267,6 +298,11 @@ int main()
 							//send file over data connection
 							send(sockfd_two, "2.txtEEE", strlen("2.txtEEE"), 0);
 							close(sockfd_two);
+							}
+							else{
+							char* ret = "user not logged in";
+							send(fd, ret, strlen(ret), 0); // send error message	
+							}
 						}else if(strncmp(buffer, "USER",4)==0){
 							file  = fopen("user.txt", "r");
 							printf("%s", buffer);
@@ -283,7 +319,7 @@ int main()
 								printf("%s\n", data);
 
 								if(strcmp(token1, temp)==0){
-										addNode( temp, fd); 
+										user_log_in( temp, fd); 
 										printf("found\n");
 										f=1;
 										ret ="331 Username OK, need password.";
@@ -320,9 +356,9 @@ int main()
 								char* token1 = strtok(data, t);
 								char* token2 = strtok(NULL, t);
 								token2[strlen(token2)-1]='\0';
-								printf("%s\t%s\t%s\n", token1, token2, temp);
+								//printf("%s\t%s\t%s\n", token1, token2, temp);
 								if(strcmp(token2, temp)==0){
-										// printf("the password matches in the file \n");
+										//printf("the password matches in the file \n");
 										f = password_verified( token1); 
 										ret ="User logged in, proceed.";
 										break;
@@ -335,10 +371,7 @@ int main()
 							}
 							send(fd, ret, strlen(ret), 0);
 							fclose(file);
-
-						}
-
-						else{
+						}else{
 							printf("INVALID COMMAND: %s\n", buffer);
 							char* ret = "COMMAND NOT FOUND";
 							send(fd, ret, strlen(ret), 0);
@@ -350,7 +383,6 @@ int main()
 		}
 		
 	}
-
 	//close
 	close(server_sd);
 	return 0;
