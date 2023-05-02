@@ -15,8 +15,126 @@
 #define CONTROL_PORT 5000
 #define SERVER_DATA_PORT 5001
 
+typedef struct user_state
+{
+	char *user;
+	int client_num;
+	int log ;  //check if user is looged in or not 
+	int pass ; //check if the oassword is right?
+	struct user_state *next; 
+}USR; 
+
+USR* head= NULL;
+
+void addNode(  int n)
+{
+	// char* us;
+    // us = malloc(strlen(buff)*sizeof(char)+1);
+    // strcpy(us, buff);
+	USR* node = (USR*) malloc(sizeof(USR)); 
+	// free(us);
+	node->user = "";
+	node->log = 0 ; 
+	node->client_num = n;
+	node-> pass = 0;
+	node->next = head;
+	head = node; 
+}
+
+void user_log_in(char buff[], int n)
+{
+	char* us;
+    us = malloc(strlen(buff)*sizeof(char)+1);
+    strcpy(us, buff);
+	USR* curr = head;   
+	while(curr!=NULL)
+	{	//printf("%duser updated with name%d\n", curr->client_num, n);
+		if(curr->client_num==n){
+			curr->log=1;
+			curr->user= us;
+			//printf("%suser updated with name\n", curr->user);
+			break; 
+	}
+		curr = curr->next;
+	}
+
+}
+
+int check_log_in(int n)
+{
+	int f=0;
+	USR* curr = head; 
+	while(curr!=NULL)
+	{
+		if(curr->client_num==n){
+			if(curr->pass==1)
+			{
+				f=1;
+			}	
+			break; 
+	}
+		curr = curr->next;
+	}
+	return f;
+}
+void print_list()
+{	
+	USR* curr = head; 
+	while(curr!=NULL)
+	{
+		//printf("%d\tname:%s\n", curr->client_num, curr->user);
+		curr= curr->next;
+	}
+}
+
+int password_verified( char buff[])
+{
+	int f =0; 
+	char* us;
+    us = malloc(strlen(buff)*sizeof(char)+1);
+	USR* curr = head; 
+    strcpy(us, buff);
+	printf("%s:us\n", us);
+	while(curr!=NULL)
+	{	
+		//printf("%slisttt\n", curr->user);
+		if(strcmp(curr->user,us)==0){
+			curr->pass=1; 
+			//printf("here password found\n");
+			f=1;
+			break; 
+	}
+		curr = curr->next;
+	}
+	return f;
+}
+void removeNode( int n)
+{
+	USR* curr= head;
+	USR* prev = NULL; 
+	while(curr!=NULL)
+	{
+		if(curr->client_num ==n)
+		{
+			if(prev==NULL)
+			{
+				head= curr->next;
+			}
+			else{
+			prev->next= curr->next;
+			}
+			free(curr);
+		break; }
+
+		prev= curr; 
+		curr= curr->next; 
+	}
+}
+
 int main()
 {
+	USR* head = NULL;  //the lsit tp maintain state 
+	FILE * file ;	
 	//socket
 	int server_sd = socket(AF_INET,SOCK_STREAM,0);
 	printf("Server fd = %d \n",server_sd);
@@ -82,6 +200,7 @@ int main()
 				{
 					int client_sd = accept(server_sd,0,0);
 					printf("Client Connected fd = %d \n",client_sd);
+					addNode(client_sd);
 					FD_SET(client_sd,&full_fdset);
 					
 					if(client_sd>max_fd){
@@ -94,9 +213,11 @@ int main()
 					char buffer[256];
 					bzero(buffer,sizeof(buffer));
 					int bytes = recv(fd,buffer,sizeof(buffer),0);
+					printf("fd: %d logged in: %d\n", fd, check_log_in(fd));
 					if(bytes==0)   //client has closed the connection
 					{
 						printf("connection closed from client side \n");
+						removeNode(fd);
 						close(fd);
 						FD_CLR(fd,&full_fdset);
 						if(fd==max_fd)
@@ -109,22 +230,11 @@ int main()
 								}
 						}
 					}else{
-
-						// check here for commands: PORT, RETR, ETC.
-						/*
-							RETR FLOW:
-							1. SERVER GETS `PORT XYZ` ON CONTROL CONNECTION:
-								CLIENT OPENS DATA CONNECTION ON CLIENT PORT N+1 TO SEND TO SERVER PORT 21
-							2. SERVER SENDS BACK 200 PORT COMMAND SUCCESSFUL ON CONTROL CONNECTION
-							3. SERVER GETS `RETR FILE.TXT` ON CONTROL CONNECTION:
-								SERVER CHECKS IF THE FILE EXISTS, IF EXISTS SERVER SENDS 150 FILE STATUS OKAY, OPENING
-							4. SERVER OPEN PORT 21 AND GET READY TO SEND TO XYZ
-							5. SERVER SENDS FILE FROM SERVER PORT 21 TO CLIENT PORT N+1
-							6. SERVER CLOSES PORT AFTER SEND
-							7. CLIENT CLOSES PORT AFTER RECEIVE
-						*/
 						if(strncmp(buffer, "PORT", 4)==0){
-							printf("port command\n");
+							if(check_log_in(fd) == 0){
+								send(fd, "530 Not logged in.", strlen("530 Not logged in."), 0);
+								continue;
+							}
 							char* ret = "200 PORT command successful";
 							int act_port[2];
 							int act_ip[4];
@@ -148,16 +258,24 @@ int main()
 							remoteaddr.sin_port = htons(port_dec); // get from port command above (client port to send data to)
 
 							int bindErr = bind(data_socks[fd], (struct sockaddr *)&serverDataAddr, sizeof(serverDataAddr));
-							if(bindErr!=0){
-								printf("bind err, %d\n", errno);
+							if(bindErr<0){
+								send(fd, "500 SERVER ERROR, PLEASE TRY AGAIN", strlen("500 SERVER ERROR, PLEASE TRY AGAIN"), 0);
+								close(data_socks[fd]);
+								continue;
 							}
 							int err = connect(data_socks[fd], (struct sockaddr *)&remoteaddr, sizeof(remoteaddr));
-							if(err!=0){
-								printf("connect err, %d\n", errno);
+							if(err<0){
+								send(fd, "500 SERVER ERROR, PLEASE TRY AGAIN", strlen("500 SERVER ERROR, PLEASE TRY AGAIN"), 0);
+								close(data_socks[fd]);
+								continue;
 							}
 							send(fd, ret, strlen(ret), 0); // send 200
 							
 						}else if(strncmp(buffer, "RETR",4)==0){
+							if(check_log_in(fd) == 0){
+								send(fd, "530 Not logged in.", strlen("530 Not logged in."), 0);
+								continue;
+							}
 							printf("received: %s, fd:%d, sockval:%d \n",buffer, fd, data_socks[fd]);
 							char filepath[1024];
 							sscanf(buffer, "RETR %s", filepath);
@@ -182,6 +300,10 @@ int main()
 							fclose(fileobj);
 							close(data_socks[fd]);
 						}else if(strncmp(buffer, "STOR",4)==0){
+							if(check_log_in(fd) == 0){
+								send(fd, "530 Not logged in.", strlen("530 Not logged in."), 0);
+								continue;
+							}
 							printf("received: %s, fd:%d, sockval:%d \n",buffer, fd, data_socks[fd]);
 							char* found = "150 File status okay; about to open data connection.";
 							send(fd, found, strlen(found), 0); // send 150 file status okay
@@ -194,6 +316,74 @@ int main()
 							fclose(temp);
 							send(fd, "226 Transfer completed.", strlen("226 Transfer completed."), 0);
 							close(data_socks[fd]);
+						}else if(strncmp(buffer, "USER",4)==0){
+							file  = fopen("user.txt", "r");
+							printf("%s", buffer);
+							char temp[100]; 
+							strncpy(temp, buffer+5, strlen(buffer) -5); 
+							temp[strlen(buffer)- 5]= '\0';  //user name the client send
+							char *ret; 
+							char data[100];
+							char * t =",";
+							int f= 0;
+							while(fgets(data, 200, file)){
+        						printf("%s\n", data);
+								char* token1 = strtok(data, t);
+								printf("%s\n", data);
+
+								if(strcmp(token1, temp)==0){
+										user_log_in( temp, fd); 
+										printf("found\n");
+										f=1;
+										ret ="331 Username OK, need password.";
+										// send(fd, ret, strlen(ret), 0);
+										break;
+							}}
+							if(f==0)
+							{
+								ret ="user not logged in \n";
+							}
+							if(send(fd, ret, strlen(ret), 0)<0)
+							{
+								printf("send eroor\n");
+							}
+							
+							fclose(file);
+
+						}else if(strncmp(buffer, "PASS",4)==0){
+							file  = fopen("user.txt", "r");
+							if(file == NULL)
+							{
+								printf("fdsfds\n");
+							}
+							char temp[100]; 
+							strncpy(temp, buffer+5, strlen(buffer) -5); 
+							temp[strlen(buffer)- 5]= '\0';  //password
+							char *ret; 
+							char data[100];
+							int f =0;
+							char * t =",";
+							// printf("here\n");
+							while(fgets(data, 100, file)){
+        						printf("%s",data);
+								char* token1 = strtok(data, t);
+								char* token2 = strtok(NULL, t);
+								token2[strlen(token2)-1]='\0';
+								//printf("%s\t%s\t%s\n", token1, token2, temp);
+								if(strcmp(token2, temp)==0){
+										//printf("the password matches in the file \n");
+										f = password_verified( token1); 
+										ret ="User logged in, proceed.";
+										break;
+							}
+							}
+							if(f==0)
+							{
+								ret = "dumbass";
+								printf("wrong password\n");
+							}
+							send(fd, ret, strlen(ret), 0);
+							fclose(file);
 						}else{
 							printf("INVALID COMMAND: %s\n", buffer);
 							char* ret = "COMMAND NOT FOUND";
