@@ -57,7 +57,7 @@ int main()
 	FD_SET(server_sd,&full_fdset);
 
 	printf("Server is listening...\n");
-	int sockfd_two;
+	int* data_socks = (int*) malloc(3*sizeof(int));
 	struct sockaddr_in serverDataAddr;
 	bzero(&serverDataAddr,sizeof(serverDataAddr));
 	serverDataAddr.sin_family = AF_INET;
@@ -84,8 +84,10 @@ int main()
 					printf("Client Connected fd = %d \n",client_sd);
 					FD_SET(client_sd,&full_fdset);
 					
-					if(client_sd>max_fd)	
+					if(client_sd>max_fd){
 						max_fd = client_sd;
+						data_socks = realloc(data_socks, sizeof(int)*max_fd);
+					}
 				}
 				else
 				{
@@ -130,42 +132,41 @@ int main()
 							int port_dec;
 							sscanf(buffer, "PORT %d,%d,%d,%d,%d,%d",&act_ip[0],&act_ip[1],&act_ip[2],&act_ip[3],&act_port[0],&act_port[1]);
 							sprintf(ip, "%d.%d.%d.%d", act_ip[0], act_ip[1], act_ip[2],act_ip[3]);
-							int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 							port_dec=act_port[0]*256+act_port[1];
 							printf("ip: %s, port: %d\n", ip, port_dec);
-							sockfd_two = socket(AF_INET, SOCK_STREAM, 0);
-							printf("socket at: %d\n", sockfd_two);
-							if(sockfd_two < 0){
-								printf("socket err, errno: %d, sock:%d\n", errno, sockfd_two);
+							data_socks[fd] = socket(AF_INET, SOCK_STREAM, 0);
+							printf("socket at: %d\n", data_socks[fd]);
+							if(data_socks[fd] < 0){
+								printf("socket err, errno: %d, sock:%d\n", errno, data_socks[fd]);
 							}
 							int value  = 1;
-							setsockopt(sockfd_two,SOL_SOCKET,SO_REUSEADDR,&value,sizeof(value));
+							setsockopt(data_socks[fd],SOL_SOCKET,SO_REUSEADDR,&value,sizeof(value));
 							struct sockaddr_in remoteaddr;
 							bzero(&remoteaddr,sizeof(remoteaddr));
 							remoteaddr.sin_family = AF_INET;
 							remoteaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
 							remoteaddr.sin_port = htons(port_dec); // get from port command above (client port to send data to)
 
-							int bindErr = bind(sockfd_two, (struct sockaddr *)&serverDataAddr, sizeof(serverDataAddr));
+							int bindErr = bind(data_socks[fd], (struct sockaddr *)&serverDataAddr, sizeof(serverDataAddr));
 							if(bindErr!=0){
 								printf("bind err, %d\n", errno);
 							}
-							int err = connect(sockfd_two, (struct sockaddr *)&remoteaddr, sizeof(remoteaddr));
+							int err = connect(data_socks[fd], (struct sockaddr *)&remoteaddr, sizeof(remoteaddr));
 							if(err!=0){
 								printf("connect err, %d\n", errno);
 							}
 							send(fd, ret, strlen(ret), 0); // send 200
 							
 						}else if(strncmp(buffer, "RETR",4)==0){
-							printf("received: %s, fd:%d, sockval:%d \n",buffer, fd, sockfd_two);
+							printf("received: %s, fd:%d, sockval:%d \n",buffer, fd, data_socks[fd]);
 							char filepath[1024];
 							sscanf(buffer, "RETR %s", filepath);
 							FILE* fileobj = fopen(filepath, "r");
-							fseek(fileobj, 0, SEEK_SET);
 							if(!fileobj){
 								char* notFound = "404 where da file?";
 								send(fd, notFound, strlen(notFound), 0); // send 404 not found
 							}else{
+								fseek(fileobj, 0, SEEK_SET);
 								char* found = "150 File status okay; about to open data connection.";
 								send(fd, found, strlen(found), 0); // send 150 file status okay
 								//send file over data connection
@@ -173,26 +174,26 @@ int main()
 								char send_buffer[256];
 								memset(send_buffer,'\0',256);
 								while(fgets(send_buffer,256,fileobj)!=NULL){
-									send(sockfd_two, send_buffer, 256, 0);
+									send(data_socks[fd], send_buffer, 256, 0);
 									memset(send_buffer,'\0',256);
 								}
 								send(fd, "226 Transfer completed.", strlen("226 Transfer completed."), 0);
 							}
 							fclose(fileobj);
-							close(sockfd_two);
+							close(data_socks[fd]);
 						}else if(strncmp(buffer, "STOR",4)==0){
-							printf("received: %s, fd:%d, sockval:%d \n",buffer, fd, sockfd_two);
+							printf("received: %s, fd:%d, sockval:%d \n",buffer, fd, data_socks[fd]);
 							char* found = "150 File status okay; about to open data connection.";
 							send(fd, found, strlen(found), 0); // send 150 file status okay
 							//receive file over data connection
 							char fileBuffer[256];
 							FILE* temp = fopen("testSTOR.txt", "w");
-							while(recv(sockfd_two, fileBuffer, 256, 0) > 0){
+							while(recv(data_socks[fd], fileBuffer, 256, 0) > 0){
 								fwrite(fileBuffer, 1, strlen(fileBuffer), temp);
 							}
 							fclose(temp);
 							send(fd, "226 Transfer completed.", strlen("226 Transfer completed."), 0);
-							close(sockfd_two);
+							close(data_socks[fd]);
 						}else{
 							printf("INVALID COMMAND: %s\n", buffer);
 							char* ret = "COMMAND NOT FOUND";
@@ -207,6 +208,7 @@ int main()
 	}
 
 	//close
+	free(data_socks);
 	close(server_sd);
 	return 0;
 }
