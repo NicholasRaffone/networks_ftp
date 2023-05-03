@@ -22,6 +22,7 @@ typedef struct user_state
 	int log ;  //check if user is looged in or not 
 	int pass ; //check if the oassword is right?
 	struct user_state *next; 
+	char path[256];
 }USR; 
 
 USR* head= NULL;
@@ -39,6 +40,19 @@ void addNode(  int n)
 	node-> pass = 0;
 	node->next = head;
 	head = node; 
+	getcwd(node->path, 256);
+}
+
+USR* getNode(int n){
+	USR* curr = head;   
+	while(curr!=NULL)
+	{	//printf("%duser updated with name%d\n", curr->client_num, n);
+		if(curr->client_num==n){
+			return curr;
+	}
+		curr = curr->next;
+	}
+	return NULL;
 }
 
 void user_log_in(char buff[], int n)
@@ -151,7 +165,12 @@ int main()
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_port = htons(CONTROL_PORT);
 	server_addr.sin_addr.s_addr = inet_addr("127.0.0.1"); //INADDR_ANY, INADDR_LOOP
+	char user_filepath[256];
+	getcwd(user_filepath, 256);
+	strcat(user_filepath, "/user.txt");
 
+	char original_filepath[256];
+	getcwd(original_filepath, 256);
 	//bind
 	if(bind(server_sd, (struct sockaddr*)&server_addr,sizeof(server_addr))<0)
 	{
@@ -196,6 +215,7 @@ int main()
 		{
 			if(FD_ISSET(fd,&read_fdset))
 			{
+				chdir(original_filepath);
 				if(fd==server_sd)
 				{
 					int client_sd = accept(server_sd,0,0);
@@ -213,7 +233,10 @@ int main()
 					char buffer[256];
 					bzero(buffer,sizeof(buffer));
 					int bytes = recv(fd,buffer,sizeof(buffer),0);
-					printf("fd: %d logged in: %d\n", fd, check_log_in(fd));
+					USR* curr_user = getNode(fd);
+					if(curr_user!=NULL){
+						chdir(curr_user->path);
+					}
 					if(bytes==0)   //client has closed the connection
 					{
 						printf("connection closed from client side \n");
@@ -276,12 +299,11 @@ int main()
 								send(fd, "530 Not logged in.", strlen("530 Not logged in."), 0);
 								continue;
 							}
-							printf("received: %s, fd:%d, sockval:%d \n",buffer, fd, data_socks[fd]);
 							char filepath[1024];
 							sscanf(buffer, "RETR %s", filepath);
 							FILE* fileobj = fopen(filepath, "r");
 							if(!fileobj){
-								char* notFound = "404 where da file?";
+								char* notFound = "550 No such file or directory.";
 								send(fd, notFound, strlen(notFound), 0); // send 404 not found
 							}else{
 								fseek(fileobj, 0, SEEK_SET);
@@ -304,20 +326,25 @@ int main()
 								send(fd, "530 Not logged in.", strlen("530 Not logged in."), 0);
 								continue;
 							}
-							printf("received: %s, fd:%d, sockval:%d \n",buffer, fd, data_socks[fd]);
 							char* found = "150 File status okay; about to open data connection.";
 							send(fd, found, strlen(found), 0); // send 150 file status okay
+							char tempFileName[256];
+							// Prints "Hello world!" on hello_world
+							sprintf(tempFileName, "rand%d.tmp", fd);
 							//receive file over data connection
 							char fileBuffer[256];
-							FILE* temp = fopen("testSTOR.txt", "w");
+							FILE* temp = fopen(tempFileName, "w");
 							while(recv(data_socks[fd], fileBuffer, 256, 0) > 0){
 								fwrite(fileBuffer, 1, strlen(fileBuffer), temp);
 							}
 							fclose(temp);
+							char filepath[1024];
+							sscanf(buffer, "RETR %s", filepath);
+							rename(tempFileName, filepath);
 							send(fd, "226 Transfer completed.", strlen("226 Transfer completed."), 0);
 							close(data_socks[fd]);
 						}else if(strncmp(buffer, "USER",4)==0){
-							file  = fopen("user.txt", "r");
+							file  = fopen(user_filepath, "r");
 							printf("%s", buffer);
 							char temp[100]; 
 							strncpy(temp, buffer+5, strlen(buffer) -5); 
@@ -333,7 +360,6 @@ int main()
 
 								if(strcmp(token1, temp)==0){
 										user_log_in( temp, fd); 
-										printf("found\n");
 										f=1;
 										ret ="331 Username OK, need password.";
 										// send(fd, ret, strlen(ret), 0);
@@ -351,7 +377,7 @@ int main()
 							fclose(file);
 
 						}else if(strncmp(buffer, "PASS",4)==0){
-							file  = fopen("user.txt", "r");
+							file  = fopen(user_filepath, "r");
 							if(file == NULL)
 							{
 								printf("fdsfds\n");
@@ -379,17 +405,15 @@ int main()
 							}
 							if(f==0)
 							{
-								ret = "dumbass";
-								printf("wrong password\n");
+								ret = "INVALID PASSWORD";
 							}
 							send(fd, ret, strlen(ret), 0);
 							fclose(file);
-						}else if(strncmp(buffer, "CWD", 3) == 0){
+						}else if(strncmp(buffer, "LIST", 4) == 0){
 							if(check_log_in(fd) == 0){
 								send(fd, "530 Not logged in.", strlen("530 Not logged in."), 0);
 								continue;
 							}
-							printf("received: %s, fd:%d, sockval:%d \n",buffer, fd, data_socks[fd]);
 							char* found = "150 File status okay; about to open data connection.";
 							send(fd, found, strlen(found), 0); // send 150 file status okay
 							//receive file over data connection
@@ -400,12 +424,49 @@ int main()
 								send(data_socks[fd], send_buffer, 256, 0);
 								memset(send_buffer,'\0',256);
 							}
-							fclose(fpipe);
+							pclose(fpipe);
 							send(fd, "226 Transfer completed.", strlen("226 Transfer completed."), 0);
 							close(data_socks[fd]);
+						}else if(strncmp(buffer, "QUIT",4)==0){
+							send(fd, "221 Service closing control connection", strlen("221 Service closing control connection"), 0);
+							removeNode(fd);
+							close(fd);
+							FD_CLR(fd,&full_fdset);
+							if(fd==max_fd)
+							{
+								for(int i=max_fd; i>=3; i--)
+									if(FD_ISSET(i,&full_fdset))
+									{
+										max_fd =  i;
+										break;
+									}
+							}
+						}else if(strncmp(buffer, "CWD",3)==0){
+							if(check_log_in(fd) == 0){
+								send(fd, "530 Not logged in.", strlen("530 Not logged in."), 0);
+								continue;
+							}
+							char filepath[1024];
+							bzero(filepath, 256);
+							sscanf(buffer, "CWD %s", filepath);
+							int chdir_error = chdir(filepath);
+							
+							if(chdir_error < 0){
+								char* fail = "550 No such file or directory";
+								send(fd, fail, strlen(fail), 0);
+							}else{
+								USR* user = getNode(fd);
+								getcwd(user->path, 256);
+								char success[256] = "200 directory changed to ";
+								strcat(success, filepath);
+								send(fd, success, strlen(success), 0);
+							}
 						}else{
-							printf("INVALID COMMAND: %s\n", buffer);
-							char* ret = "COMMAND NOT FOUND";
+							if(check_log_in(fd) == 0){
+								send(fd, "530 Not logged in.", strlen("530 Not logged in."), 0);
+								continue;
+							}
+							char* ret = "202 Command not implemented";
 							send(fd, ret, strlen(ret), 0);
 						}
 

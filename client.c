@@ -84,16 +84,9 @@ int main(int argc, char** argv)
 
 	while(1)
 	{
-       fgets(buffer,sizeof(buffer),stdin);
-       buffer[strcspn(buffer, "\n")] = 0;  //remove trailing newline char from buffer, fgets does not remove it
-       if(strcmp(buffer,"bye")==0)
-        {
-        	printf("closing the connection to server \n");
-        	close(server_sd);
-            break;
-        }
-
-		// HANDLE DIFFERENT SHIT
+		printf("ftp> ");
+    	fgets(buffer,sizeof(buffer),stdin);
+    	buffer[strcspn(buffer, "\n")] = 0;  //remove trailing newline char from buffer, fgets does not remove it
 
 		if(strncmp(buffer, "RETR", 4) == 0){
 			// retr flow
@@ -201,7 +194,7 @@ int main(int argc, char** argv)
 				exit(-1);
 			}
 			printf("%s\n", retBuffer);
-		}else if(strncmp(buffer, "CWD",3)==0){
+		}else if(strncmp(buffer, "LIST",4)==0){
 			char portMsg[40];
 			int sockfd = connectSocket(portMsg, CLIENT_CONTROL_PORT+port_offset);
 			
@@ -232,8 +225,25 @@ int main(int argc, char** argv)
 			}
 			port_offset++;
 			close(sockfd);
+		}else if(strncmp(buffer, "QUIT", 4)==0){
+			send(server_sd, buffer,strlen(buffer),0);
+			bzero(retBuffer,sizeof(retBuffer));
+			if(recv(server_sd, retBuffer, 256, 0)<0)
+			{
+				perror("send");
+				exit(-1);
+			}
+			printf("%s\n", retBuffer);
+			close(server_sd);
+			break;
 		}else{
-			printf("INVALID COMMAND\n");
+			send(server_sd, buffer,strlen(buffer),0);
+			if(recv(server_sd, retBuffer, 256, 0)<0)
+			{
+				perror("send");
+				exit(-1);
+			}
+			printf("%s\n", retBuffer);
 		}
 	}
 
