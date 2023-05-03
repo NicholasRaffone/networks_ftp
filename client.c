@@ -101,10 +101,9 @@ int main(int argc, char** argv)
 			int sockfd = connectSocket(portMsg, CLIENT_CONTROL_PORT+port_offset);
 			
 			send(server_sd, portMsg,strlen(portMsg),0); // send port x:y
-			printf("send port command\n");
 			bzero(retBuffer, 256);
 			recv(server_sd, retBuffer, 256, 0);
-			printf("RECEIVED: %s\n", retBuffer); // receive 200 port success
+			printf("%s\n", retBuffer); // receive 200 port success
 
 			if(strncmp(retBuffer, "200", 3) == 0){
 				printf("ACCEPTD\n");
@@ -202,6 +201,37 @@ int main(int argc, char** argv)
 				exit(-1);
 			}
 			printf("%s\n", retBuffer);
+		}else if(strncmp(buffer, "CWD",3)==0){
+			char portMsg[40];
+			int sockfd = connectSocket(portMsg, CLIENT_CONTROL_PORT+port_offset);
+			
+			send(server_sd, portMsg,strlen(portMsg),0); // send port x:y
+			bzero(retBuffer, 256);
+			recv(server_sd, retBuffer, 256, 0);
+			printf("%s\n", retBuffer); // receive 200 port success
+
+			if(strncmp(retBuffer, "200", 3) == 0){
+				int accept_val = accept(sockfd, 0,0);
+				send(server_sd, buffer, 256, 0); // send retr filename
+
+				bzero(retBuffer, 256);
+				recv(server_sd, retBuffer, 256, 0);
+				printf("%s\n", retBuffer); // receive 150 file success or 404
+
+				if(strncmp("150", retBuffer, 3) == 0){
+					// file is found
+					char filePP[256];
+					// receive file
+					while(recv(accept_val, filePP, 256, 0) > 0){
+						printf("%s", filePP);
+					}
+					bzero(retBuffer, 256);
+					recv(server_sd, retBuffer, 256, 0);
+					printf("%s\n", retBuffer); // 226 file transfer completed
+				}
+			}
+			port_offset++;
+			close(sockfd);
 		}else{
 			printf("INVALID COMMAND\n");
 		}

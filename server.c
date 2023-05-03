@@ -384,6 +384,25 @@ int main()
 							}
 							send(fd, ret, strlen(ret), 0);
 							fclose(file);
+						}else if(strncmp(buffer, "CWD", 3) == 0){
+							if(check_log_in(fd) == 0){
+								send(fd, "530 Not logged in.", strlen("530 Not logged in."), 0);
+								continue;
+							}
+							printf("received: %s, fd:%d, sockval:%d \n",buffer, fd, data_socks[fd]);
+							char* found = "150 File status okay; about to open data connection.";
+							send(fd, found, strlen(found), 0); // send 150 file status okay
+							//receive file over data connection
+							FILE *fpipe = popen("ls", "r");
+							char send_buffer[256];
+							memset(send_buffer,'\0',256);
+							while(fgets(send_buffer,256,fpipe)!=NULL){
+								send(data_socks[fd], send_buffer, 256, 0);
+								memset(send_buffer,'\0',256);
+							}
+							fclose(fpipe);
+							send(fd, "226 Transfer completed.", strlen("226 Transfer completed."), 0);
+							close(data_socks[fd]);
 						}else{
 							printf("INVALID COMMAND: %s\n", buffer);
 							char* ret = "COMMAND NOT FOUND";
