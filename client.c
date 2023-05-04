@@ -92,7 +92,8 @@ int main(int argc, char** argv)
 			// retr flow
 			char portMsg[40];
 			int sockfd = connectSocket(portMsg, CLIENT_CONTROL_PORT+port_offset);
-			
+			char filepath[1024];
+			sscanf(buffer, "RETR %s", filepath);
 			send(server_sd, portMsg,strlen(portMsg),0); // send port x:y
 			bzero(retBuffer, 256);
 			recv(server_sd, retBuffer, 256, 0);
@@ -108,11 +109,8 @@ int main(int argc, char** argv)
 				printf("RECEIVED: %s\n", retBuffer); // receive 150 file success or 404
 
 				if(strncmp("150", retBuffer, 3) == 0){
-					// file is found
-					printf("file found\n");
 					char filePP[256];
-					// receive file
-					FILE* temp = fopen("test.txt", "w");
+					FILE* temp = fopen(filepath, "w");
 					while(recv(accept_val, filePP, 256, 0) > 0){
 						fwrite(filePP, 1, strlen(filePP), temp);
 					}
@@ -130,7 +128,7 @@ int main(int argc, char** argv)
 			sscanf(buffer, "STOR %s", filepath);
 			FILE* fileobj = fopen(filepath, "r");
 			if(!fileobj){
-				printf("File not found\n");
+				printf("550 No such file or directory.\n");
 			}else{
 				fseek(fileobj, 0, SEEK_SET);
 				char portMsg[40];
@@ -168,9 +166,9 @@ int main(int argc, char** argv)
 				}else{
 					close(sockfd);
 				}
-				fclose(fileobj);
 				port_offset++;
 			}
+			fclose(fileobj);
 		}else if(strncmp(buffer, "USER", 4)==0){
 
 			send(server_sd, buffer,strlen(buffer),0);
@@ -238,6 +236,7 @@ int main(int argc, char** argv)
 			break;
 		}else{
 			send(server_sd, buffer,strlen(buffer),0);
+			bzero(retBuffer, 256);
 			if(recv(server_sd, retBuffer, 256, 0)<0)
 			{
 				perror("send");
