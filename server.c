@@ -450,17 +450,26 @@ int main()
 							bzero(filepath, 256);
 							sscanf(buffer, "CWD %s", filepath);
 							int chdir_error = chdir(filepath);
-							
 							if(chdir_error < 0){
 								char* fail = "550 No such file or directory";
 								send(fd, fail, strlen(fail), 0);
 							}else{
 								USR* user = getNode(fd);
+								bzero(user->path, 256);
 								getcwd(user->path, 256);
 								char success[256] = "200 directory changed to ";
-								strcat(success, filepath);
+								strcat(success, user->path);
 								send(fd, success, strlen(success), 0);
 							}
+						}else if(strncmp(buffer, "PWD",3)==0){
+							if(check_log_in(fd) == 0){
+								send(fd, "530 Not logged in.", strlen("530 Not logged in."), 0);
+								continue;
+							}
+							USR* user = getNode(fd);
+							char success[256] = "257 ";
+							strcat(success, user->path);
+							send(fd, success, strlen(success), 0);
 						}else{
 							if(check_log_in(fd) == 0){
 								send(fd, "530 Not logged in.", strlen("530 Not logged in."), 0);
