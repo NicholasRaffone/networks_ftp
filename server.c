@@ -371,7 +371,7 @@ int main()
 							}
 							if(send(fd, ret, strlen(ret), 0)<0)
 							{
-								printf("send eroor\n");
+								printf("send error\n");
 							}
 							
 							fclose(file);
