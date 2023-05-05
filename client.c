@@ -195,7 +195,7 @@ int main(int argc, char** argv)
 		}else if(strncmp(buffer, "PASS", 4)==0){
 			// printf("here");
 			if(user_name_verified!=1){
-				printf("please enter user name first\n");
+				printf("530 not logged in.\n");
 				continue;}
 			printf("buffer is: %s\n", buffer);
 			send(server_sd, buffer,strlen(buffer),0);
@@ -253,7 +253,7 @@ int main(int argc, char** argv)
 			break;
 		}else if(strncmp(buffer, "!PWD", 4)==0){
 			if(pass_verified!=1){
-			printf("please log in first\n");
+			printf("530 not logged in.\n");
 			continue;}
 			if(getcwd(dir,sizeof(dir))== NULL)  //having the base directory
 			{
@@ -262,7 +262,7 @@ int main(int argc, char** argv)
 			printf("%s\n", dir);
 		}else if(strncmp(buffer, "!CWD", 4)==0){
 			if(pass_verified!=1){
-				printf("please log in first\n");
+				printf("530 not logged in.\n");
 				continue;}
 			char foldername[200];
 			strncpy(foldername, buffer+5, strlen(buffer)-5);
@@ -279,7 +279,7 @@ int main(int argc, char** argv)
 			printf("updated path: %s\n", dir);
 		}else if(strncmp(buffer, "!LIST", 5)==0){
 			if(pass_verified!=1){
-				printf("please log in first\n");
+				printf("530 not logged in.\n");
 				continue;}
 			DIR* directory;
 			struct dirent *dir_temp;
@@ -287,11 +287,29 @@ int main(int argc, char** argv)
 			if(directory){
 				while((dir_temp= readdir(directory))!=NULL){
 					if(dir_temp->d_type==DT_REG){
-						printf("%s\n", dir_temp->d_name); // printinf all file names in the given diorectory 
+						printf("%s\n", dir_temp->d_name); // printinf all file names in the given directory 
 					}
 				}
 			}
 			closedir(directory);
+		}else if(strncmp(buffer, "CWD", 3)==0){
+			send(server_sd, buffer,strlen(buffer),0);
+			bzero(retBuffer, 256);
+			if(recv(server_sd, retBuffer, 256, 0)<0)
+			{
+				perror("send");
+				exit(-1);
+			}
+			printf("%s\n", retBuffer);	
+		}else if(strncmp(buffer, "PWD", 3)==0){
+			send(server_sd, buffer,strlen(buffer),0);
+			bzero(retBuffer, 256);
+			if(recv(server_sd, retBuffer, 256, 0)<0)
+			{
+				perror("send");
+				exit(-1);
+			}
+			printf("%s\n", retBuffer);	
 		}else{
 			send(server_sd, buffer,strlen(buffer),0);
 			bzero(retBuffer, 256);
