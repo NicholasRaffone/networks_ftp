@@ -84,11 +84,14 @@ int main(int argc, char** argv)
         exit(-1);
     }
 	
-	printf("port %d\n", CLIENT_CONTROL_PORT);
 	
 	//accept
 	char buffer[256];
 	char retBuffer[256];
+
+	recv(server_sd, buffer, 256, 0);
+	printf("%s\n", buffer);
+	bzero(buffer, 256);
 
 	while(1)
 	{
