@@ -222,6 +222,7 @@ int main()
 					printf("Client Connected fd = %d \n",client_sd);
 					addNode(client_sd);
 					FD_SET(client_sd,&full_fdset);
+					send(client_sd, "220 Service ready for new user", strlen("220 Service ready for new user"), 0);
 					
 					if(client_sd>max_fd){
 						max_fd = client_sd;
@@ -371,7 +372,7 @@ int main()
 							}
 							if(send(fd, ret, strlen(ret), 0)<0)
 							{
-								printf("send eroor\n");
+								printf("send error\n");
 							}
 							
 							fclose(file);
