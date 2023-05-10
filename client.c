@@ -189,10 +189,7 @@ int main(int argc, char** argv)
 				perror("send");
 				exit(-1);
 			}
-			// printf("here");
 			printf("%s\n", retBuffer);
-			if(strncmp(retBuffer, "331", 3)==0){
-				user_name_verified=1;}	
 		}else if(strncmp(buffer, "PASS", 4)==0){
 			// printf("here");
 			if(user_name_verified!=1){
@@ -207,9 +204,6 @@ int main(int argc, char** argv)
 				exit(-1);
 			}
 			printf("%s\n", retBuffer);
-			if(strncmp(retBuffer, "INVALID PASSWORD", 16)!=0){
-				pass_verified=1;
-			}
 		}else if(strncmp(buffer, "LIST",4)==0){
 			char portMsg[40];
 			int sockfd = connectSocket(portMsg, CLIENT_CONTROL_PORT+port_offset);
@@ -253,22 +247,15 @@ int main(int argc, char** argv)
 			close(server_sd);
 			break;
 		}else if(strncmp(buffer, "!PWD", 4)==0){
-			if(pass_verified!=1){
-			printf("530 not logged in.\n");
-			continue;}
 			if(getcwd(dir,sizeof(dir))== NULL)  //having the base directory
 			{
 				perror("error in the !PWD getcwd\n");
 			}
 			printf("%s\n", dir);
 		}else if(strncmp(buffer, "!CWD", 4)==0){
-			if(pass_verified!=1){
-				printf("530 not logged in.\n");
-				continue;}
 			char foldername[200];
 			strncpy(foldername, buffer+5, strlen(buffer)-5);
 			foldername[strlen(buffer)- 5]= '\0';
-			// printf("foldername:%s\n", foldername);
 			if(chdir(foldername) < 0)  //having the base directory
 			{
 				perror("error in the !CWD chdir\n");
@@ -279,9 +266,6 @@ int main(int argc, char** argv)
 			}
 			printf("updated path: %s\n", dir);
 		}else if(strncmp(buffer, "!LIST", 5)==0){
-			if(pass_verified!=1){
-				printf("530 not logged in.\n");
-				continue;}
 			DIR* directory;
 			struct dirent *dir_temp;
 			directory= opendir(dir);

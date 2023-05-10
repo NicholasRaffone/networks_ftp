@@ -29,11 +29,7 @@ USR* head= NULL;
 
 void addNode(  int n)
 {
-	// char* us;
-    // us = malloc(strlen(buff)*sizeof(char)+1);
-    // strcpy(us, buff);
 	USR* node = (USR*) malloc(sizeof(USR)); 
-	// free(us);
 	node->user = "";
 	node->log = 0 ; 
 	node->client_num = n;
@@ -96,7 +92,6 @@ void print_list()
 	USR* curr = head; 
 	while(curr!=NULL)
 	{
-		//printf("%d\tname:%s\n", curr->client_num, curr->user);
 		curr= curr->next;
 	}
 }
@@ -346,7 +341,6 @@ int main()
 							close(data_socks[fd]);
 						}else if(strncmp(buffer, "USER",4)==0){
 							file  = fopen(user_filepath, "r");
-							printf("%s", buffer);
 							char temp[100]; 
 							strncpy(temp, buffer+5, strlen(buffer) -5); 
 							temp[strlen(buffer)- 5]= '\0';  //user name the client send
@@ -355,10 +349,7 @@ int main()
 							char * t =",";
 							int f= 0;
 							while(fgets(data, 200, file)){
-        						printf("%s\n", data);
 								char* token1 = strtok(data, t);
-								printf("%s\n", data);
-
 								if(strcmp(token1, temp)==0){
 										user_log_in( temp, fd); 
 										f=1;
@@ -374,9 +365,7 @@ int main()
 							{
 								printf("send error\n");
 							}
-							
 							fclose(file);
-
 						}else if(strncmp(buffer, "PASS",4)==0){
 							file  = fopen(user_filepath, "r");
 							if(file == NULL)
@@ -392,7 +381,6 @@ int main()
 							char * t =",";
 							// printf("here\n");
 							while(fgets(data, 100, file)){
-        						printf("%s",data);
 								char* token1 = strtok(data, t);
 								char* token2 = strtok(NULL, t);
 								token2[strlen(token2)-1]='\0';
