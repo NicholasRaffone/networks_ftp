@@ -8,8 +8,8 @@
 #include<stdlib.h>
 #include <time.h>
 #include <dirent.h>
-#define SERVER_DATA_PORT 5001
-#define SERVER_CONTROL_PORT 5000
+#define SERVER_DATA_PORT 20
+#define SERVER_CONTROL_PORT 21
 
 int connectSocket(char* portMsg, int dataportnum){
 	sprintf(portMsg, "PORT 127,0,0,1,%d,%d", (int)dataportnum/256, dataportnum%256);
@@ -42,8 +42,6 @@ int connectSocket(char* portMsg, int dataportnum){
 int main(int argc, char** argv)
 {
 	int port_offset = 1;
-	int user_name_verified=0;
-	int pass_verified=0;
 	char user[1024];
 	char dir[1024]; // stores the current directory info for the client
 	if(getcwd(dir,sizeof(dir))== NULL)  //having the base directory
@@ -181,22 +179,16 @@ int main(int argc, char** argv)
 			}
 			fclose(fileobj);
 		}else if(strncmp(buffer, "USER", 4)==0){
-			send(server_sd, buffer,strlen(buffer),0);
-			// printf("user\n");
+			send(server_sd, buffer,strlen(buffer),0); //sending username to server
 			bzero(retBuffer,sizeof(retBuffer));
-			if(recv(server_sd, retBuffer, 256, 0)<0)
+			if(recv(server_sd, retBuffer, 256, 0)<0)  // recieving the successful login or no info
 			{
 				perror("send");
 				exit(-1);
 			}
 			printf("%s\n", retBuffer);
 		}else if(strncmp(buffer, "PASS", 4)==0){
-			// printf("here");
-			if(user_name_verified!=1){
-				printf("530 not logged in.\n");
-				continue;}
-			printf("buffer is: %s\n", buffer);
-			send(server_sd, buffer,strlen(buffer),0);
+			send(server_sd, buffer,strlen(buffer),0); //sending password to server
 			bzero(retBuffer,sizeof(retBuffer));
 			if(recv(server_sd, retBuffer, 256, 0)<0)
 			{

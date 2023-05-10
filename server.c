@@ -12,8 +12,8 @@
 #include<unistd.h>
 #include<stdlib.h>
 #include<errno.h>
-#define CONTROL_PORT 5000
-#define SERVER_DATA_PORT 5001
+#define CONTROL_PORT 21
+#define SERVER_DATA_PORT 20
 
 typedef struct user_state
 {
@@ -42,7 +42,7 @@ void addNode(  int n)
 USR* getNode(int n){
 	USR* curr = head;   
 	while(curr!=NULL)
-	{	//printf("%duser updated with name%d\n", curr->client_num, n);
+	{
 		if(curr->client_num==n){
 			return curr;
 	}
@@ -58,11 +58,10 @@ void user_log_in(char buff[], int n)
     strcpy(us, buff);
 	USR* curr = head;   
 	while(curr!=NULL)
-	{	//printf("%duser updated with name%d\n", curr->client_num, n);
+	{	
 		if(curr->client_num==n){
 			curr->log=1;
-			curr->user= us;
-			//printf("%suser updated with name\n", curr->user);
+			curr->user= us; //adding the username to the node corresponding with the client 
 			break; 
 	}
 		curr = curr->next;
@@ -106,16 +105,15 @@ int password_verified( char buff[])
 	printf("%s:us\n", us);
 	while(curr!=NULL)
 	{	
-		//printf("%slisttt\n", curr->user);
+
 		if(strcmp(curr->user,us)==0){
-			curr->pass=1; 
-			//printf("here password found\n");
+			curr->pass=1;  //making the curr-pass 1 for the user meaning the user is logged in
 			f=1;
 			break; 
 	}
 		curr = curr->next;
 	}
-	return f;
+	return f; //f == 1 means password verified f==0 means password not verified 
 }
 void removeNode( int n)
 {
@@ -359,7 +357,7 @@ int main()
 							}}
 							if(f==0)
 							{
-								ret ="user not logged in \n";
+								ret ="user not registered";
 							}
 							if(send(fd, ret, strlen(ret), 0)<0)
 							{
@@ -370,7 +368,7 @@ int main()
 							file  = fopen(user_filepath, "r");
 							if(file == NULL)
 							{
-								printf("fdsfds\n");
+								printf("error\n");
 							}
 							char temp[100]; 
 							strncpy(temp, buffer+5, strlen(buffer) -5); 
